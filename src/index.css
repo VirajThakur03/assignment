@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #090d16;
+    --surface-card: rgba(17, 24, 39, 0.7);
+    --border-subtle: rgba(255, 255, 255, 0.07);
+  }
+
+  body {
+    background-color: #080c14;
+    color: #f1f5f9;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply antialiased selection:bg-indigo-500 selection:text-white overflow-x-hidden;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(8, 12, 20, 0.8);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.6);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.9);
+}
+
+/* Human-crafted Surface & Glass Utilities */
+.surface-panel {
+  background: rgba(13, 18, 30, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.surface-card {
+  background: rgba(20, 27, 44, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.surface-card:hover {
+  background: rgba(26, 36, 58, 0.75);
+  border-color: rgba(99, 102, 241, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+
+/* Button & Tactile Interaction Utility */
+.btn-primary {
+  @apply px-4 py-2 bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 hover:from-indigo-500 hover:to-blue-500 active:scale-[0.98] text-white font-semibold text-xs rounded-xl shadow-md shadow-indigo-900/30 transition-all duration-150 flex items-center justify-center space-x-1.5;
+}
+
+.btn-secondary {
+  @apply px-3 py-2 bg-slate-800/80 hover:bg-slate-700/80 active:scale-[0.98] text-slate-200 hover:text-white border border-slate-700/80 font-medium text-xs rounded-xl transition-all duration-150 flex items-center justify-center space-x-1.5;
+}
+
+.badge-tag {
+  @apply inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors;
+}
+
+/* Diff Highlighting */
+.diff-added {
+  @apply bg-emerald-950/40 text-emerald-300 border-l-2 border-emerald-500 pl-2 font-mono text-xs py-0.5;
+}
+.diff-removed {
+  @apply bg-rose-950/40 text-rose-300 border-l-2 border-rose-500 pl-2 font-mono text-xs py-0.5 line-through opacity-75;
+}
+
+/* Linear-style Grid Background Effect */
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
