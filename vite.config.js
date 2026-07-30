@@ -7,6 +7,6 @@ export default defineConfig({
   base: './', // Ensures assets load correctly on GitHub Pages under any path
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'node',
   },
 });
