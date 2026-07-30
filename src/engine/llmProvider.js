@@ -1,17 +1,17 @@
 /**
- * Unified LLM Provider & Agent Intelligence Engine
- * Supports zero-config Mock Simulator AND live LLM APIs (OpenAI, Gemini, Groq, Claude)
+ * LLM Provider Integration Module
+ * Real LLM API Integration (OpenAI, Gemini, Groq) with fallbacks & Intelligent Mock Engine
  */
 
 export const PROVIDERS = {
   MOCK: 'mock',
   OPENAI: 'openai',
-  GEMINI: 'gemini',
-  GROQ: 'groq'
+  GROQ: 'groq',
+  GEMINI: 'gemini'
 };
 
 /**
- * Generates next step decision given skill context, history, and available tools
+ * Executes a single agent step: decides whether to invoke a tool or finalize execution.
  */
 export async function generateAgentStep({
   skill,
@@ -19,12 +19,13 @@ export async function generateAgentStep({
   inputData,
   executionHistory,
   stepNumber,
-  providerConfig = { provider: PROVIDERS.MOCK }
+  providerConfig
 }) {
   const allowedTools = version.allowedTools || [];
   const maxSteps = version.maxExecutionSteps || 5;
 
-  if (providerConfig.provider === PROVIDERS.MOCK || !providerConfig.apiKey) {
+  // Use Built-in Mock Simulator if provider is 'mock' or no API key configured
+  if (!providerConfig || providerConfig.provider === PROVIDERS.MOCK || !providerConfig.apiKey) {
     return generateMockStep({ skill, version, inputData, executionHistory, stepNumber, allowedTools, maxSteps });
   }
 
@@ -51,6 +52,18 @@ function generateMockStep({ skill, version, inputData, executionHistory, stepNum
     .filter(h => h.type === 'tool_result' || h.type === 'tool_approval')
     .map(h => h.toolName);
 
+  // Security Test Guard: If prompt asks to attempt unauthorized tool
+  if ((instructions.includes('try') || instructions.includes('record lookup')) && !executionHistory.some(h => h.type === 'tool_refusal')) {
+    if (!allowedTools.includes('structured_record_lookup')) {
+      return {
+        thought: "Attempting to query customer database records table.",
+        actionType: 'tool_call',
+        toolName: 'structured_record_lookup',
+        toolArgs: { table: 'users', searchKey: email }
+      };
+    }
+  }
+
   // Step 1: Record Lookup or Document Search
   if (stepNumber === 1) {
     if (allowedTools.includes('structured_record_lookup') && !executedToolNames.includes('structured_record_lookup')) {
@@ -67,7 +80,7 @@ function generateMockStep({ skill, version, inputData, executionHistory, stepNum
         toolName: 'document_search',
         toolArgs: { query: auditTopic }
       };
-    } else if (allowedTools.includes('calculator')) {
+    } else if (allowedTools.includes('calculator') && !executedToolNames.includes('calculator')) {
       return {
         thought: `Calculating initial baseline total for purchase amount of $${amount}.`,
         actionType: 'tool_call',
@@ -96,48 +109,23 @@ function generateMockStep({ skill, version, inputData, executionHistory, stepNum
     }
   }
 
-  // Step 3: Math Calculation or Task Creation
-  if (stepNumber === 3) {
-    if (allowedTools.includes('calculator') && !executedToolNames.includes('calculator')) {
-      return {
-        thought: `Calculating full refund eligibility for customer purchase of $${amount}.`,
-        actionType: 'tool_call',
-        toolName: 'calculator',
-        toolArgs: { expression: `${amount}` }
-      };
-    } else if (allowedTools.includes('mock_task_creator') && !executedToolNames.includes('mock_task_creator')) {
-      return {
-        thought: `The refund request qualifies for VIP priority dispatch. Invoking task creator ticket for support operations.`,
-        actionType: 'tool_call',
-        toolName: 'mock_task_creator',
-        toolArgs: {
-          title: `Refund Processing Escalation for ${email}`,
-          priority: amount > 300 ? 'high' : 'medium',
-          assignee: 'Support Ops Team',
-          description: `Customer ${email} requested refund of $${amount}. Reason: ${inputData?.refundReason || 'User request'}.`,
-          idempotencyKey: `task-${email}-${amount}`
-        }
-      };
-    }
-  }
-
-  // Step 4: Write Task Creation (if write action permitted and not executed yet)
-  if (stepNumber === 4 && allowedTools.includes('mock_task_creator') && !executedToolNames.includes('mock_task_creator')) {
+  // If mock_task_creator is permitted and not executed yet, invoke it!
+  if (allowedTools.includes('mock_task_creator') && !executedToolNames.includes('mock_task_creator')) {
     return {
-      thought: `Creating an official support escalation task for manager sign-off on refund of $${amount}.`,
+      thought: `The refund request qualifies for VIP priority dispatch. Invoking task creator ticket for support operations.`,
       actionType: 'tool_call',
       toolName: 'mock_task_creator',
       toolArgs: {
-        title: `Escalated Refund Approval: ${email}`,
-        priority: 'urgent',
-        assignee: 'Finance Manager',
-        description: `High-value refund request ($${amount}) requires manager sign-off.`,
+        title: `Refund Processing Escalation for ${email}`,
+        priority: amount > 300 ? 'high' : 'medium',
+        assignee: 'Support Ops Team',
+        description: `Customer ${email} requested refund of $${amount}. Reason: ${inputData?.refundReason || 'User request'}.`,
         idempotencyKey: `task-${email}-${amount}`
       }
     };
   }
 
-  // Step limit guard check or Finalizing Output
+  // Finalizing Output
   const recordResult = executionHistory.find(h => h.toolName === 'structured_record_lookup')?.result;
   const calcResult = executionHistory.find(h => h.toolName === 'calculator')?.result;
   const taskResult = executionHistory.find(h => h.toolName === 'mock_task_creator')?.result;
@@ -187,16 +175,17 @@ Return JSON with format: {"thought": "...", "actionType": "tool_call"|"finish", 
     },
     body: JSON.stringify({
       model: providerConfig.model || 'gpt-4o-mini',
-      messages: [{ role: 'system', content: prompt }],
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
       response_format: { type: 'json_object' }
     })
   });
 
   if (!response.ok) {
-    throw new Error(`API returned status ${response.status}`);
+    throw new Error(`HTTP error ${response.status}: ${await response.text()}`);
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  return JSON.parse(content);
+  const rawText = data.choices?.[0]?.message?.content || '{}';
+  return JSON.parse(rawText);
 }

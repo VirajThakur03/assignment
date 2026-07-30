@@ -269,7 +269,7 @@ export class AgentOrchestrator {
             executionHistory: [...this.executionHistory]
           });
         }
-        return { success: false, error: stepLimitMsg, logs: this.logs };
+        return { success: false, status: 'FAILED', error: stepLimitMsg, logs: this.logs };
       }
 
       this.log('info', 'STEP', `Executing Agent Step ${this.stepNumber}/${this.maxSteps}`);
